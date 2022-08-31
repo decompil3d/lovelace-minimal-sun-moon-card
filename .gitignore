@@ -1,0 +1,8 @@
+/node_modules/
+/.rpt2_cache/
+/dist
+.DS_Store
+cypress/videos/
+cypress/screenshots/
+.nyc_output/
+coverage/

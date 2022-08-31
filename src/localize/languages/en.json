@@ -1,0 +1,18 @@
+{
+  "common": {
+    "version": "Version",
+    "title": "Minimal Sun Moon",
+    "title_card": "Minimal Sun Moon Card",
+    "description": "A minimal card to render the state of the sun and moon.",
+    "invalid_configuration": "Invalid configuration"
+  },
+  "editor": {
+    "sun_entity": "Sun entity (Required)",
+    "moon_entity": "Moon entity (Optional)"
+  },
+  "errors": {
+    "missing_sun_entity": "sun_entity is missing in configuration",
+    "missing_moon_entity": "moon_entity is missing in configuration",
+    "invalid_colors": "The following colors in your configuration are invalid:"
+  }
+}

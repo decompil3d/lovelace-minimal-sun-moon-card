@@ -1,0 +1,37 @@
+name: 'Build non-main'
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: |
+          cd /home/runner/work/lovelace-minimal-sun-moon-card/lovelace-minimal-sun-moon-card
+          npm ci
+          npm run build
+      - name: Save artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: hourly-weather.js
+          retention-days: 5
+          path: /home/runner/work/lovelace-minimal-sun-moon-card/lovelace-minimal-sun-moon-card/dist/sun-moon-card.js
+      - name: Run tests
+        uses: cypress-io/github-action@v4
+        with:
+          record: ${{ github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' }}
+          start: npm run test:server
+          wait-on: 'http://localhost:8000'
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TZ: Etc/UTC # https://github.com/cypress-io/cypress/issues/1043
