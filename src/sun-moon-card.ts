@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, TemplateResult, css, PropertyValues, CSSResultGroup } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { StyleInfo, styleMap } from 'lit/directives/style-map.js'
 import {
   HomeAssistant,
   hasConfigOrEntityChanged,
@@ -9,15 +10,10 @@ import {
   handleAction,
   LovelaceCardEditor,
   getLovelace,
-  formatTime,
-  FrontendLocaleData,
+  formatTime
 } from 'custom-card-helpers'; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
-import { isValidColorName, isValidHSL, isValidRGB } from 'is-valid-css-color';
 
 import type {
-  ColorConfig,
-  ColorMap,
-  ColorSettings,
   MinimalSunMoonCardConfig,
   LocalizerLastSettings
 } from './types';
@@ -51,8 +47,10 @@ export class MinimalSunMoonCard extends LitElement {
     return document.createElement('minimal-sun-moon-editor');
   }
 
-  public static getStubConfig(): Record<string, unknown> {
-    return {};
+  public static getStubConfig(): Partial<MinimalSunMoonCardConfig> {
+    return {
+      sun_entity: 'sun.sun'
+    };
   }
 
   // TODO Add any properities that should cause your element to re-render here
@@ -60,10 +58,6 @@ export class MinimalSunMoonCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @state() private config!: MinimalSunMoonCardConfig;
-
-  @state() private renderedConfig!: Promise<MinimalSunMoonCardConfig>;
-
-  private configRenderPending = false;
 
   private localizer?: ReturnType<typeof getLocalizer> = void 0;
   private localizerLastSettings: LocalizerLastSettings = {
@@ -137,8 +131,6 @@ export class MinimalSunMoonCard extends LitElement {
 
     const sunUp = sunState.state === 'above_horizon';
 
-    const colorSettings = this.getColorSettings(config.colors);
-
     return html`
       <ha-card
         @action=${this._handleAction}
@@ -150,8 +142,6 @@ export class MinimalSunMoonCard extends LitElement {
         .label=${`Minimal Sun Moon Card: ${[sunEntityId, moonEntityId].filter(Boolean).join(', ') || 'No Entities Defined'}`}
       >
         <div class="card-content">
-          ${colorSettings.warnings.length ?
-        this._showWarning(this.localize('errors.invalid_colors') + colorSettings.warnings.join(', ')) : ''}
           ${sunUp ? this.renderSun(sunState) : this.renderNight(sunState, moonState) }
         </div>
       </ha-card>
@@ -159,53 +149,36 @@ export class MinimalSunMoonCard extends LitElement {
   }
 
   private renderSun(sunState: HassEntity): TemplateResult {
-    return html`Sun: ${sunState.state}`;
+    const sunrise = new Date(sunState.attributes.previous_rising);
+    const sunset = new Date(sunState.attributes.next_setting);
+    const dayLength = sunset.getTime() - sunrise.getTime();
+    const sunSoFar = Date.now() - sunrise.getTime();
+    const sunPercent = (sunSoFar / dayLength) * 100;
+    const sunStyles: StyleInfo = {
+      left: sunPercent.toFixed(4)
+    };
+    return html`<div class="sun-moon-card">
+      ${this.config.hide_sunrise ? null : html`<span class="sunrise">${formatTime(sunrise, this.hass.locale)}</span>`}
+      <span class="sun-path">
+        <span class="bar"> </span>
+        <span class="sun" style=${styleMap(sunStyles)} title=${this.localize('card.sun_percent', '{percent}', sunPercent.toFixed(4))}>
+          <ha-icon icon="mdi:weather-sunny"></ha-icon>
+        </span>
+      </span>
+      ${this.config.hide_sunset ? null : html`<span class="sunset">${formatTime(sunset, this.hass.locale)}</span>`}
+    </div>`;
   }
 
   private renderNight(sunState: HassEntity, moonState?: HassEntity): TemplateResult {
-    return html`Night. Sun: ${sunState.state}. Moon: ${moonState ? moonState.state : 'Not configured'}`;
-  }
-
-  private formatHour(time: Date, locale: FrontendLocaleData): string {
-    const formatted = formatTime(time, locale);
-    if (formatted.includes('AM') || formatted.includes('PM')) {
-      // Drop ':00' in 12 hour time
-      return formatted.replace(':00', '');
+    const sunrise = new Date(sunState.attributes.next_rising);
+    let moonInfo: TemplateResult | undefined = void 0;
+    if (moonState) {
+      moonInfo = html`<ha-icon icon=${moonState.attributes.icon ?? 'mdi:weather-night'}></ha-icon>
+      ${this.localize('card.moon_info', '{phase}', this.localize('moon.' + moonState.state))}`
     }
-    return formatted;
-  }
-
-  private getColorSettings(colorConfig?: ColorConfig): ColorSettings {
-    if (!colorConfig) return {
-      validColors: void 0,
-      warnings: []
-    };
-
-    const validColors: ColorMap = new Map();
-    const warnings: string[] = [];
-    Object.entries(colorConfig).forEach(([k, v]) => {
-      if (this.isValidColor(k, v))
-        validColors.set(k as keyof ColorConfig, v);
-      else
-        warnings.push(`${k}: ${v}`);
-    });
-    return {
-      validColors,
-      warnings
-    };
-  }
-
-  private isValidColor(key: string, color: string): boolean {
-    if (!(key in ['sun', 'moon'])) {
-      return false;
-    }
-    if (!(isValidRGB(color) ||
-      isValidColorName(color) ||
-      isValidHSL(color))) {
-      return false;
-    }
-
-    return true;
+    return html`${moonInfo}
+    ${this.localize('card.next_sunrise', '{time}', formatTime(sunrise, this.hass.locale))}
+    `;
   }
 
   private _handleAction(ev: ActionHandlerEvent): void {
@@ -235,6 +208,34 @@ export class MinimalSunMoonCard extends LitElement {
 
   // https://lit.dev/docs/components/styles/
   static get styles(): CSSResultGroup {
-    return css``;
+    return css`
+      .sun-moon-card {
+        padding: 6px;
+        display: flex;
+      }
+      .sunrise, .sunset {
+        font-size: 0.8rem;
+        color: var(--primary-text-color, white);
+      }
+      .sun-path {
+        flex-grow: 1;
+        position: relative;
+        padding: 0 6px;
+        display: flex;
+        align-items: center;
+      }
+      .bar {
+        display: inline-flex;
+        height: 3px;
+        width: 100%;
+        background-color: var(--state-climate-dry-color, yellow);
+      }
+      .sun {
+        position: absolute;
+        border-radius: 100%;
+        background-color: #111;
+        padding: 2px;
+      }
+    `;
   }
 }

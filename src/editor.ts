@@ -56,7 +56,7 @@ export class MinimalSunMoonCardEditor extends ScopedRegistryHost(LitElement) imp
     }
 
     const sunEntities = Object.keys(this.hass.states).filter(e => e.startsWith('sun.'));
-    const moonEntities = Object.keys(this.hass.states).filter(e => e.startsWith('moon.'));
+    const moonEntities = Object.keys(this.hass.states).filter(e => e.startsWith('sensor.'));
     const localize = getLocalizer(this._config?.language, this.hass?.locale?.language);
 
     return html`

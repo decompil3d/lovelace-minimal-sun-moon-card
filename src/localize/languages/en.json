@@ -14,5 +14,20 @@
     "missing_sun_entity": "sun_entity is missing in configuration",
     "missing_moon_entity": "moon_entity is missing in configuration",
     "invalid_colors": "The following colors in your configuration are invalid:"
+  },
+  "card": {
+    "sun_percent": "{percent}% through the day",
+    "next_sunrise": "Sunrise is at {time}.",
+    "moon_info": "The moon is in the {phase} phase tonight."
+  },
+  "moon": {
+    "new_moon": "New Moon",
+    "waxing_crescent": "Waxing Crescent",
+    "first_quarter": "First Quarter",
+    "waxing_gibbous": "Waxing Gibbous",
+    "full_moon": "Full Moon",
+    "waning_gibbous": "Waning Gibbous",
+    "last_quarter": "Last Quarter",
+    "waning_crescent": "Waning Crescent"
   }
 }
